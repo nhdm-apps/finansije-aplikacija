@@ -1,0 +1,121 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+
+interface Unos {
+  id: number;
+  vreme: string;
+  datum: string;
+  zarada: number;
+  baksis: number;
+  kmWolt: number;
+  kmPrivatno: number;
+}
+
+export default function WoltPage() {
+  const [datum, setDatum] = useState(new Date().toISOString().split('T')[0]);
+  const [zarada, setZarada] = useState("");
+  const [baksis, setBaksis] = useState("");
+  const [kmWolt, setKmWolt] = useState("");
+  const [kmPrivatno, setKmPrivatno] = useState("");
+
+  const [dnevniUnosi, setDnevniUnosi] = useState<Unos[]>([]);
+
+  const sacuvajUnos = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const noviUnos: Unos = {
+      id: Date.now(),
+      vreme: new Date().toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' }),
+      datum: datum,
+      zarada: Number(zarada) || 0,
+      baksis: Number(baksis) || 0,
+      kmWolt: Number(kmWolt) || 0,
+      kmPrivatno: Number(kmPrivatno) || 0,
+    };
+
+    setDnevniUnosi([noviUnos, ...dnevniUnosi]);
+    setZarada("");
+    setBaksis("");
+    setKmWolt("");
+    setKmPrivatno("");
+  };
+
+  const ukupnoZarada = dnevniUnosi.reduce((sum, u) => sum + u.zarada, 0);
+  const ukupnoBaksis = dnevniUnosi.reduce((sum, u) => sum + u.baksis, 0);
+  const ukupnoKm = dnevniUnosi.reduce((sum, u) => sum + u.kmWolt + u.kmPrivatno, 0);
+
+  return (
+    <main className="min-h-screen p-4 bg-gray-50 text-gray-800 font-sans pb-20">
+      <div className="flex justify-between items-center mb-6 pt-4 px-2">
+        <h1 className="text-2xl font-bold text-slate-800">Wolt Dnevnik</h1>
+        <Link href="/" className="text-sm font-semibold text-teal-600 bg-teal-50 px-4 py-2 rounded-xl">
+          ← Nazad
+        </Link>
+      </div>
+
+      <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
+        <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Unos vožnje</h2>
+        <form onSubmit={sacuvajUnos} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1">Datum</label>
+            <input type="date" required value={datum} onChange={(e) => setDatum(e.target.value)}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Bruto zarada</label>
+              <input type="number" placeholder="Samo ako si vozio" value={zarada} onChange={(e) => setZarada(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">Bakšiš</label>
+              <input type="number" placeholder="Keš + App" value={baksis} onChange={(e) => setBaksis(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-2">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">KM Wolt</label>
+              <input type="number" placeholder="Deonica za Wolt" value={kmWolt} onChange={(e) => setKmWolt(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 mb-1">KM Privatno</label>
+              <input type="number" placeholder="Privatna vožnja" value={kmPrivatno} onChange={(e) => setKmPrivatno(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+            </div>
+          </div>
+          <button type="submit" className="w-full bg-slate-800 text-white font-bold text-sm py-4 rounded-xl shadow-md mt-4">
+            + Dodaj zapis
+          </button>
+        </form>
+      </div>
+
+      {dnevniUnosi.length > 0 && (
+        <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-end border-b pb-3 mb-4">
+            <h2 className="text-lg font-bold text-slate-800">Današnji zbir</h2>
+            <div className="text-right text-xs font-bold text-gray-500">
+              <span className="text-teal-600">+{ukupnoZarada + ukupnoBaksis} RSD</span> | <span className="text-blue-500">{ukupnoKm} km</span>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {dnevniUnosi.map((unos) => (
+              <div key={unos.id} className="flex flex-col bg-gray-50 p-3 rounded-xl text-sm border border-gray-100">
+                <span className="text-xs font-bold text-gray-400 mb-1">{unos.vreme}h</span>
+                <span className="text-gray-600">
+                  {unos.zarada > 0 && `Zarada: ${unos.zarada} | `}
+                  {unos.baksis > 0 && `Bakšiš: ${unos.baksis} | `}
+                  {unos.kmWolt > 0 && `Wolt: ${unos.kmWolt}km | `}
+                  {unos.kmPrivatno > 0 && `Privatno: ${unos.kmPrivatno}km`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
