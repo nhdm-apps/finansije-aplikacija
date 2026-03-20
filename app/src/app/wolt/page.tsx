@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { supabase } from "../lib/supabase";
 
@@ -12,48 +12,70 @@ interface Unos {
   baksis: number;
   kmWolt: number;
   kmPrivatno: number;
+  odometar: number;
 }
 
 export default function WoltPage() {
   const [datum, setDatum] = useState(new Date().toISOString().split('T')[0]);
   const [zarada, setZarada] = useState("");
   const [baksis, setBaksis] = useState("");
-  const [kmWolt, setKmWolt] = useState("");
+  const [odometar, setOdometar] = useState("");
   const [kmPrivatno, setKmPrivatno] = useState("");
+  
   const [ucitava, setUcitava] = useState(false);
-
   const [dnevniUnosi, setDnevniUnosi] = useState<Unos[]>([]);
+  const [prosloStanjeSata, setProsloStanjeSata] = useState(0);
+
+  // Povlačimo zadnje stanje sata iz baze kada se otvori ekran
+  useEffect(() => {
+    const fetchZadnjiOdometar = async () => {
+      const { data } = await supabase
+        .from('wolt_dnevnik')
+        .select('odometar')
+        .order('datum', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(1);
+      
+      if (data && data.length > 0 && data[0].odometar) {
+        setProsloStanjeSata(data[0].odometar);
+        setOdometar(data[0].odometar.toString());
+      }
+    };
+    fetchZadnjiOdometar();
+  }, []);
+
+  // Automatska računica za Wolt kilometre
+  const unesenoStanje = Number(odometar) || prosloStanjeSata;
+  const unesenoPrivatno = Number(kmPrivatno) || 0;
+  const razlikaSata = Math.max(0, unesenoStanje - prosloStanjeSata);
+  const racunatiKmwolt = Math.max(0, razlikaSata - unesenoPrivatno);
 
   const sacuvajUnos = async (e: React.FormEvent) => {
     e.preventDefault();
     setUcitava(true);
 
-    // 1. Šaljemo podatke u bazu
     const { data, error } = await supabase
       .from('wolt_dnevnik')
-      .insert([
-        {
+      .insert([{
           datum: datum,
           zarada: Number(zarada) || 0,
           baksis: Number(baksis) || 0,
-          km_wolt: Number(kmWolt) || 0,
-          km_privatno: Number(kmPrivatno) || 0,
-        }
-      ])
-      .select(); // Tražimo da nam baza vrati šta je upisala (zbog ID-a)
+          km_wolt: racunatiKmwolt,
+          km_privatno: unesenoPrivatno,
+          odometar: unesenoStanje
+      }])
+      .select();
 
     setUcitava(false);
 
-    // 2. Proveravamo greške
     if (error) {
-      alert("Došlo je do greške pri upisu: " + error.message);
+      alert("Greška pri upisu: " + error.message);
       return;
     }
 
-    // 3. Ako je sve OK, dodajemo upisani podatak u našu lokalnu listu za prikaz
     if (data && data.length > 0) {
       const upisano = data[0];
-      const noviUnos: Unos = {
+      setDnevniUnosi([{
         id: upisano.id,
         vreme: new Date().toLocaleTimeString('sr-RS', { hour: '2-digit', minute: '2-digit' }),
         datum: upisano.datum,
@@ -61,39 +83,32 @@ export default function WoltPage() {
         baksis: upisano.baksis,
         kmWolt: upisano.km_wolt,
         kmPrivatno: upisano.km_privatno,
-      };
+        odometar: upisano.odometar
+      }, ...dnevniUnosi]);
       
-      setDnevniUnosi([noviUnos, ...dnevniUnosi]);
+      setProsloStanjeSata(unesenoStanje); // Ažuriramo memoriju na novo stanje
     }
 
-    // 4. Čistimo formu za sledeću vožnju, a datum ostavljamo
     setZarada("");
     setBaksis("");
-    setKmWolt("");
     setKmPrivatno("");
   };
-
-  const ukupnoZarada = dnevniUnosi.reduce((sum, u) => sum + u.zarada, 0);
-  const ukupnoBaksis = dnevniUnosi.reduce((sum, u) => sum + u.baksis, 0);
-  const ukupnoKm = dnevniUnosi.reduce((sum, u) => sum + u.kmWolt + u.kmPrivatno, 0);
 
   return (
     <main className="min-h-screen p-4 bg-gray-50 text-gray-800 font-sans pb-20">
       <div className="flex justify-between items-center mb-6 pt-4 px-2">
         <h1 className="text-2xl font-bold text-slate-800">Wolt Dnevnik</h1>
-        <Link href="/" className="text-sm font-semibold text-teal-600 bg-teal-50 px-4 py-2 rounded-xl">
-          ← Nazad
-        </Link>
+        <Link href="/" className="text-sm font-semibold text-teal-600 bg-teal-50 px-4 py-2 rounded-xl">← Nazad</Link>
       </div>
 
       <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 mb-6">
-        <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Unos vožnje</h2>
         <form onSubmit={sacuvajUnos} className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1">Datum</label>
             <input type="date" required value={datum} onChange={(e) => setDatum(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
           </div>
+          
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1">Bruto zarada</label>
@@ -106,44 +121,47 @@ export default function WoltPage() {
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 border-t pt-4 mt-2">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">KM Wolt</label>
-              <input type="number" placeholder="npr. 25" value={kmWolt} onChange={(e) => setKmWolt(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+
+          <div className="border-t pt-4 mt-2">
+            <div className="mb-4">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Trenutno stanje sata (Prošlo: {prosloStanjeSata} km)
+              </label>
+              <input type="number" required placeholder="Unesi novo stanje" value={odometar} onChange={(e) => setOdometar(e.target.value)}
+                className="w-full bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-lg font-bold text-blue-900 focus:ring-2 focus:ring-blue-500 outline-none" />
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">KM Privatno</label>
-              <input type="number" placeholder="npr. 10" value={kmPrivatno} onChange={(e) => setKmPrivatno(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+
+            <div className="grid grid-cols-2 gap-4 items-end">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 mb-1">Od toga Privatno (km)</label>
+                <input type="number" placeholder="npr. 10" value={kmPrivatno} onChange={(e) => setKmPrivatno(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" />
+              </div>
+              <div className="bg-slate-100 px-4 py-3 rounded-xl border border-slate-200 text-center">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase">Wolt pređeno</span>
+                <span className="text-lg font-black text-slate-700">{racunatiKmwolt} km</span>
+              </div>
             </div>
           </div>
+
           <button type="submit" disabled={ucitava}
             className={`w-full text-white font-bold text-sm py-4 rounded-xl shadow-md mt-4 transition
-            ${ucitava ? "bg-gray-400 cursor-not-allowed" : "bg-slate-800 hover:bg-slate-700 active:scale-95"}`}>
-            {ucitava ? "Beleženje u bazu..." : "+ Dodaj zapis"}
+            ${ucitava ? "bg-gray-400" : "bg-slate-800 hover:bg-slate-700"}`}>
+            {ucitava ? "Beleženje..." : "+ Dodaj zapis"}
           </button>
         </form>
       </div>
 
       {dnevniUnosi.length > 0 && (
         <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100">
-          <div className="flex justify-between items-end border-b pb-3 mb-4">
-            <h2 className="text-lg font-bold text-slate-800">Tvoj presek</h2>
-            <div className="text-right text-xs font-bold text-gray-500">
-              <span className="text-teal-600">+{ukupnoZarada + ukupnoBaksis} RSD</span> | <span className="text-blue-500">{ukupnoKm} km</span>
-            </div>
-          </div>
+          <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">Upisano danas</h2>
           <div className="space-y-3">
             {dnevniUnosi.map((unos) => (
-              <div key={unos.id} className="flex flex-col bg-gray-50 p-3 rounded-xl text-sm border border-gray-100">
-                <span className="text-xs font-bold text-gray-400 mb-1">{unos.vreme}h</span>
-                <span className="text-gray-600">
-                  {unos.zarada > 0 && `Zarada: ${unos.zarada} | `}
-                  {unos.baksis > 0 && `Bakšiš: ${unos.baksis} | `}
-                  {unos.kmWolt > 0 && `Wolt: ${unos.kmWolt}km | `}
-                  {unos.kmPrivatno > 0 && `Privatno: ${unos.kmPrivatno}km`}
-                </span>
+              <div key={unos.id} className="bg-gray-50 p-3 rounded-xl text-sm border border-gray-100">
+                <div className="font-bold text-slate-700">{unos.vreme}h | Sat: {unos.odometar} km</div>
+                <div className="text-gray-500 text-xs mt-1">
+                  Wolt: {unos.kmWolt}km | Privatno: {unos.kmPrivatno}km
+                </div>
               </div>
             ))}
           </div>
