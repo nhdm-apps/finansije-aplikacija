@@ -1,27 +1,2 @@
-{
-  "name": "app",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.99.2",
-    "next": "^16.2.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "^16.2.0",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
-}
+NEXT_PUBLIC_SUPABASE_URL=https://hljudngvwtsqltrhletq.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhsanVkbmd2d3RzcWx0cmhsZXRxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MTE3NjUsImV4cCI6MjA4OTQ4Nzc2NX0.TR5eD0WENh3k3_-yC40da4lbNncxImzae-UO5awNW0k
