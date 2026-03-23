@@ -35,6 +35,13 @@ export default function Home() {
             <h2 className="text-xl font-semibold mb-1 text-gray-900">💳 Nova Transakcija</h2>
             <p className="text-sm text-gray-500">Evidentiraj brzu uplatu ili isplatu (kirija, računi, gorivo).</p>
           </Link>
+            {/* Dugme za Praćenje projekcije */}
+          <Link href="/projekcija" className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center space-y-3 hover:bg-gray-50 transition active:scale-95">
+          <div className="w-14 h-14 bg-indigo-100 rounded-full flex items-center justify-center text-2xl shadow-inner">
+            🔮
+        </div>
+        <span className="font-bold text-slate-700">Projekcija</span>
+        </Link>
         </div>
       </div>
     </main>
